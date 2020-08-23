@@ -50,9 +50,7 @@ final class JobScheduler {
     
     func start() {
         isActive = true
-        DispatchQueue.global().async {
-            self.main()
-        }
+        main()
     }
     
     func stop() {
@@ -60,12 +58,18 @@ final class JobScheduler {
     }
     
     private func main() {
-        while isActive {
-            isolatedQueue.async(flags: .barrier) {
-                if var job = self.jobQueue.poll() {
-                    job.start()
-                    job.group?.leave()
-                }
+        DispatchQueue.global().async { [weak self] in
+            while self?.isActive ?? false {
+                self?.startNextJob()
+            }
+        }
+    }
+    
+    private func startNextJob() {
+        isolatedQueue.async(flags: .barrier) {
+            if var job = self.jobQueue.poll() {
+                job.start()
+                job.group?.leave()
             }
         }
     }
